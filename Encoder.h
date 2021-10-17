@@ -1,6 +1,5 @@
 #include "hilbert.h"
 #include "morton.h"
-#include "geos/geom.h"
 
 template <class INPUT>
 class Encoder {
@@ -36,6 +35,14 @@ public:
         return hilbert_c2i(2, 32, coord);
     }
 
+    /**
+     * The min max Z order curve range of a rectangle are the IDs of minXY and maxXY
+     * @param x1_dbl
+     * @param y1_dbl
+     * @param x2_dbl
+     * @param y2_dbl
+     * @return
+     */
     inline std::pair<uint_fast64_t, uint_fast64_t> encode_z(INPUT x1_dbl, INPUT y1_dbl, INPUT x2_dbl, INPUT y2_dbl){
         uint_fast32_t x1 = d2i<uint_fast32_t>(x1_dbl, xmin, xintvl);
         uint_fast32_t y1 = d2i<uint_fast32_t>(y1_dbl, ymin, yintvl);
@@ -49,18 +56,50 @@ public:
     // This is buggy. Need to check all points lie on the perimeter of the box
     // See https://stackoverflow.com/questions/12772893/how-to-use-morton-order-in-range-search
     // See https://github.com/davidmoten/hilbert-curve
-    inline bitmask_t encode_h(INPUT x1_dbl, INPUT y1_dbl, INPUT x2_dbl, INPUT y2_dbl){
+    inline std::pair<bitmask_t, bitmask_t> encode_h(INPUT x1_dbl, INPUT y1_dbl, INPUT x2_dbl, INPUT y2_dbl){
         bitmask_t x1 = d2i<bitmask_t>(x1_dbl, xmin, xintvl);
         bitmask_t y1 = d2i<bitmask_t>(y1_dbl, ymin, yintvl);
         bitmask_t x2 = d2i<bitmask_t>(x2_dbl, xmin, xintvl);
         bitmask_t y2 = d2i<bitmask_t>(y2_dbl, ymin, yintvl);
-        bitmask_t co_lo[2] = {x1, y1};
-        bitmask_t co_hi[2] = {x2, y2};
-        std::cout << "Original index for lo hi " << hilbert_c2i(2, 32, co_lo) << " "
-        << hilbert_c2i(2, 32, co_hi) << std::endl;
-        hilbert_box_pt(2, 4, 32, false, co_lo, co_hi);
-        std::cout << "Updated index for lo hi " << hilbert_c2i(2, 32, co_lo) << " "
-                  << hilbert_c2i(2, 32, co_hi) << std::endl;
-        return hilbert_c2i(2, 32, co_hi);
+        /**
+         * The min and max Hilbert curve ID ranges of a rectangle lie on the boundary of a
+         * ********
+         * *      *
+         * *      *
+         * ********
+         */
+        bitmask_t working_co[2] = {0, 0};
+        bitmask_t min = std::numeric_limits<bitmask_t>::max();
+        bitmask_t max = std::numeric_limits<bitmask_t>::min();
+        for (bitmask_t i = x1; i <= x2; ++i) {
+            working_co[0] = i;
+            working_co[1] = y1;
+            bitmask_t working_id = hilbert_c2i(2, 32, working_co);
+            min = std::min(min, working_id);
+            max = std::max(max, working_id);
+        }
+        for (bitmask_t i = x1; i <= x2; ++i) {
+            working_co[0] = i;
+            working_co[1] = y2;
+            bitmask_t working_id = hilbert_c2i(2, 32, working_co);
+            min = std::min(min, working_id);
+            max = std::max(max, working_id);
+        }
+        for (int i = y1 + 1; i <= y2 -1 ; ++i) {
+            working_co[0] = x1;
+            working_co[1] = i;
+            bitmask_t working_id = hilbert_c2i(2, 32, working_co);
+            min = std::min(min, working_id);
+            max = std::max(max, working_id);
+        }
+
+        for (int i = y1 + 1; i <= y2 -1 ; ++i) {
+            working_co[0] = x2;
+            working_co[1] = i;
+            bitmask_t working_id = hilbert_c2i(2, 32, working_co);
+            min = std::min(min, working_id);
+            max = std::max(max, working_id);
+        }
+        return std::make_pair(min, max);
     }
 };

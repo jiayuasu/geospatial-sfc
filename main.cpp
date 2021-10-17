@@ -30,8 +30,16 @@ int main() {
     auto index_double_z = encoder->encode_z(1.5, 1.5);
     assert(index_double_z == index_zorder);
 
-    // Hard coded test cases
-    auto range = encoder->encode_z(0.0, 2.0, 4.0, 3.0);
-    assert(range.first == 8 && range.second == 26);
+    // Hard coded test cases for encoding rectangle to a minmax range (z order)
+    auto range_z = encoder->encode_z(0.0, 2.0, 4.0, 3.0);
+    assert(range_z.first == 8 && range_z.second == 26);
+
+    // Hard coded test cases for encoding rectangle to a minmax range (hilbert order)
+    auto range_h = encoder->encode_h(0.0, 2.0, 3.0, 3.0);
+    assert(range_h.first == 8 && range_h.second == 15);
+
+    // A special test case where the min max hilbert ID are not on the corners of a rectangle
+    range_h = encoder->encode_h(8.0, 4.0, 11.0, 11.0);
+    assert(range_h.first == 112 && range_h.second == 143);
     return 0;
 }
