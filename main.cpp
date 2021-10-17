@@ -1,6 +1,6 @@
-#include <iostream>
 #include "hilbert.h"
 #include "morton.h"
+#include "Encoder.h"
 int main() {
     // Test libmorton curve
     uint_fast32_t x = 1;
@@ -18,5 +18,20 @@ int main() {
     hilbert_i2c(2, 32, index_hilbert, coord1);
     assert(coord[0] == coord1[0] && coord[1] == coord1[1]);
 
+    // Test rounded double type coordinates
+    auto encoder = new Encoder<double>(0.0, 1.0, 0.0, 1.0);
+    auto index_double_h = encoder->encode_h(1.5, 1.5);
+    assert(index_double_h == index_hilbert);
+
+    // Hard coded test cases
+    assert(encoder->encode_h(1.5, 2.5) == 13);
+    assert(encoder->encode_h(2.5, 1.5) == 7);
+
+    auto index_double_z = encoder->encode_z(1.5, 1.5);
+    assert(index_double_z == index_zorder);
+
+    // Hard coded test cases
+    auto range = encoder->encode_z(0.0, 2.0, 4.0, 3.0);
+    assert(range.first == 8 && range.second == 26);
     return 0;
 }
