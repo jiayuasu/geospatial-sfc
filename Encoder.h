@@ -4,14 +4,16 @@
 template <class INPUT>
 class Encoder {
 private:
-    INPUT xmin;
-    INPUT xintvl;
-    INPUT ymin;
-    INPUT yintvl;
+    INPUT xmin; // The minimum X value in the entire space
+    INPUT xintvl; // X interval which is the cell size on X
+    INPUT ymin; // The minimum X value in the entire space
+    INPUT yintvl; // Y interval which is the cell size on Y
 public:
+    // Build an encoder using min, cell interval (aka cell size)
     Encoder(INPUT xmin, INPUT xintvl, INPUT ymin, INPUT yintvl): xmin(xmin), xintvl(xintvl), ymin(ymin), yintvl(yintvl){
     }
 
+    // Build an encoder using min, max and number of cells
     Encoder(INPUT xmin, INPUT xmax, int xnum, INPUT ymin, INPUT ymax, int ynum):
     xmin(xmin), xintvl((xmax - xmin) * 1.0 / xnum), ymin(ymin), yintvl((ymax - ymin) * 1.0 / ynum){
     }
@@ -37,10 +39,12 @@ public:
 
     /**
      * The min max Z order curve range of a rectangle are the IDs of minXY and maxXY
-     * @param x1_dbl
-     * @param y1_dbl
-     * @param x2_dbl
-     * @param y2_dbl
+     * See https://stackoverflow.com/questions/30170783/how-to-use-morton-orderz-order-curve-in-range-search
+     * See https://aws.amazon.com/blogs/database/z-order-indexing-for-multifaceted-queries-in-amazon-dynamodb-part-1/?sc_channel=sm&sc_campaign=zackblog&sc_country=global&sc_geo=global&sc_category=rds&sc_outcome=aware&adbsc=awsdbblog_social_20170517_72417147&adbid=864895517733470208&adbpl=tw&adbpr=66780587
+     * @param x1_dbl minX
+     * @param y1_dbl minY
+     * @param x2_dbl maxX
+     * @param y2_dbl maxY
      * @return
      */
     inline std::pair<uint_fast64_t, uint_fast64_t> encode_z(INPUT x1_dbl, INPUT y1_dbl, INPUT x2_dbl, INPUT y2_dbl){
@@ -53,16 +57,22 @@ public:
         return std::make_pair(min, max);
     }
 
-    // This is buggy. Need to check all points lie on the perimeter of the box
-    // See https://stackoverflow.com/questions/12772893/how-to-use-morton-order-in-range-search
-    // See https://github.com/davidmoten/hilbert-curve
+    /**
+     * The min and max Hilbert curve ID ranges of a rectangle lie on the boundary of a rectangle
+     * See https://stackoverflow.com/questions/12772893/how-to-use-morton-order-in-range-search
+     * See https://github.com/davidmoten/hilbert-curve
+     * @param x1_dbl minX
+     * @param y1_dbl minY
+     * @param x2_dbl maxX
+     * @param y2_dbl maxY
+     * @return
+     */
     inline std::pair<bitmask_t, bitmask_t> encode_h(INPUT x1_dbl, INPUT y1_dbl, INPUT x2_dbl, INPUT y2_dbl){
         auto x1 = d2i<bitmask_t>(x1_dbl, xmin, xintvl);
         auto y1 = d2i<bitmask_t>(y1_dbl, ymin, yintvl);
         auto x2 = d2i<bitmask_t>(x2_dbl, xmin, xintvl);
         auto y2 = d2i<bitmask_t>(y2_dbl, ymin, yintvl);
         /**
-         * The min and max Hilbert curve ID ranges of a rectangle lie on the boundary of a
          * ********
          * *      *
          * *      *
@@ -92,7 +102,6 @@ public:
             min = std::min(min, working_id);
             max = std::max(max, working_id);
         }
-
         for (bitmask_t i = y1 + 1; i <= y2 -1 ; ++i) {
             working_co[0] = x2;
             working_co[1] = i;
